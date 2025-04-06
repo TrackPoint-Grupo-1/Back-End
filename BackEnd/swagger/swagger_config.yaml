@@ -1,0 +1,219 @@
+openapi: 3.0.0
+info:
+  title: API de Usuários
+  version: 1.0.0
+  description: Documentação da API para gerenciamento de usuários.
+servers:
+  - url: http://localhost:5000
+paths:
+  /usuarios:
+            post:
+              summary: Criar um novo usuário
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        nome:
+                          type: string
+                        email:
+                          type: string
+                        senha:
+                          type: string
+                        cargo:
+                          type: string
+                          enum:
+                            - FUNCIONARIO
+                            - GERENTE
+                            - RECURSOS_HUMANOS
+              responses:
+                201:
+                  description: Usuário criado com sucesso
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+                          usuario:
+                            type: object
+                            properties:
+                              nome:
+                                type: string
+                              email:
+                                type: string
+                              cargo:
+                                type: string
+                400:
+                  description: Erro na requisição
+
+  /usuarios/ativos:
+    get:
+      summary: Listar usuários ativos
+      responses:
+        200:
+          description: Lista de usuários ativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+        404:
+          description: Nenhum usuário ativo encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Nenhum usuário ativo encontrado.
+
+  /usuarios/inativos:
+    get:
+      summary: Listar usuários inativos
+      responses:
+        200:
+          description: Lista de usuários inativos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+        404:
+          description: Nenhum usuário inativo encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Nenhum usuário inativo encontrado.
+
+  /usuarios/listar-nome-ou-email:
+    get:
+      summary: Buscar usuário por nome ou e-mail
+      parameters:
+        - name: nome
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: Usuário(s) encontrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+        400:
+          description: Nome ou e-mail devem ser fornecidos
+        404:
+          description: Nenhum usuário encontrado
+
+  /usuarios/login:
+    post:
+      summary: Login do usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                senha:
+                  type: string
+      responses:
+        200:
+          description: Login realizado com sucesso
+        401:
+          description: E-mail ou senha inválidos
+
+  /usuarios/logout:
+    post:
+      summary: Logout do usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        200:
+          description: Logout realizado com sucesso
+        404:
+          description: Usuário não encontrado
+
+  /usuarios/atualizar:
+    patch:
+      summary: Atualizar dados do usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizacaoUsuario'
+      responses:
+        200:
+          description: Usuário atualizado com sucesso
+        400:
+          description: Erro na requisição
+
+  /usuarios/desativar:
+    patch:
+      summary: Desativar usuário por e-mail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+      responses:
+        200:
+          description: Usuário desativado com sucesso
+        404:
+          description: Usuário não encontrado
+
+components:
+  schemas:
+
+    Usuario:
+      type: object
+      properties:
+        nome:
+          type: string
+        email:
+          type: string
+        cargo:
+          type: string
+        ativo:
+          type: string
+        logado:
+          type: boolean
+        data_criacao:
+          type: string
+        data_atualizacao:
+          type: string
+        data_ultimo_login:
+          type: string

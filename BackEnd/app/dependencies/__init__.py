@@ -9,7 +9,6 @@ REQUIRED_PACKAGES = [
     "colorama==0.4.6",
     "cryptography==44.0.2",
     "Flask==3.1.0",
-    "Flask-JWT-Extended==4.7.1",
     "Flask-SQLAlchemy==3.1.1",
     "greenlet==3.1.1",
     "itsdangerous==2.2.0",
@@ -17,11 +16,12 @@ REQUIRED_PACKAGES = [
     "MarkupSafe==3.0.2",
     "psycopg2-binary==2.9.10",
     "pycparser==2.22",
-    "PyJWT==2.10.1",
     "PyMySQL==1.1.1",
     "SQLAlchemy==2.0.40",
     "typing_extensions==4.13.1",
-    "Werkzeug==3.1.3"
+    "Werkzeug==3.1.3",
+    "flask-swagger-ui",
+    "re"
 ]
 
 def install_missing_packages():

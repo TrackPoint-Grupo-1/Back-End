@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from app.services.usuarioService import criar_usuario, buscar_usuarios, buscar_usuario_por_email, \
-    atualizar_usuario_por_email
+    atualizar_usuario_por_email, validar_e_atualizar_usuario, validar_email, validar_senha, validar_cargo, validar_nome
 from flask import Blueprint, jsonify, request
 
 from app.services.usuarioService import criar_usuario, buscar_usuarios, buscar_usuario_por_email, \
@@ -10,35 +10,6 @@ from app.services.usuarioService import criar_usuario, buscar_usuarios, buscar_u
 usuario_bp = Blueprint('usuario_bp', __name__)
 
 BLACKLIST = set()
-
-@usuario_bp.route("/usuarios", methods=["POST"])
-def criar():
-    dados = request.json
-
-    # Verifica se todos os campos obrigatórios estão presentes
-    if not all(k in dados for k in ["nome", "email", "senha", "cargo"]):
-        return jsonify({"error": "Nome, e-mail, senha e cargo são obrigatórios"}), 400
-
-    try:
-        # Verifica se já existe um usuário com o e-mail fornecido
-        if buscar_usuario_por_email(dados["email"]):  # Corrigido para passar apenas o e-mail
-            return jsonify({"error": "E-mail já está em uso"}), 400
-
-        # Criar usuário com os dados fornecidos
-        usuario = criar_usuario(dados["nome"], dados["email"], dados["senha"], dados["cargo"])
-
-        return jsonify({
-            "message": "Usuário criado!",
-            "usuario": {
-                "nome": usuario.nome,
-                "email": usuario.email,
-                "cargo": usuario.cargo.value  # Certificando-se de retornar a string do Enum Cargo
-            }
-        }), 201  # Código 201 indica criação bem-sucedida
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400  # Retorna erro caso algo dê errado
-
 
 @usuario_bp.route("/usuarios/ativos", methods=["GET"])
 def listar_ativos():
@@ -61,6 +32,56 @@ def listar_ativos():
         }
         for u in usuarios_ativos
     ])
+
+
+@usuario_bp.route("/usuarios", methods=["POST"])
+def criar():
+    dados = request.json
+    erros = []
+
+    # Verifica campos obrigatórios
+    campos_obrigatorios = ["nome", "email", "senha", "cargo"]
+    for campo in campos_obrigatorios:
+        if campo not in dados:
+            erros.append(f"O campo '{campo}' é obrigatório.")
+
+    # Valida nome
+    if "nome" in dados and not validar_nome(dados["nome"]):
+        erros.append("Formato de nome inválido.")
+
+    # Valida e-mail
+    if "email" in dados and not validar_email(dados["email"]):
+        erros.append("Formato de e-mail inválido.")
+
+    # Valida senha
+    if "senha" in dados and not validar_senha(dados["senha"]):
+        erros.append("Formato de senha inválido. A senha deve conter pelo menos 6 caracteres.")
+
+    # Valida cargo
+    if "cargo" in dados and not validar_cargo(dados["cargo"]):
+        erros.append("Cargo inválido. Cargos válidos: FUNCIONARIO, GERENTE, RECURSOS_HUMANOS.")
+
+    # Verifica duplicidade de e-mail
+    if "email" in dados and buscar_usuario_por_email(dados["email"]):
+        erros.append("E-mail já está em uso.")
+
+    if erros:
+        return jsonify({"erros": erros}), 400
+
+    try:
+        usuario = criar_usuario(dados["nome"], dados["email"], dados["senha"], dados["cargo"])
+        return jsonify({
+            "message": "Usuário criado!",
+            "usuario": {
+                "nome": usuario.nome,
+                "email": usuario.email,
+                "cargo": usuario.cargo.value
+            }
+        }), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 
 @usuario_bp.route("/usuarios/inativos", methods=["GET"])
 def listar_inativos():
@@ -157,19 +178,24 @@ def logout():
 @usuario_bp.route("/usuarios/atualizar", methods=["PATCH"])
 def atualizar_usuario():
     dados = request.json
-    email = dados.get("email")
+    email_atual = dados.get("email")
+    novo_email = dados.get("novo_email")
 
-    if not email:
-        return jsonify({"error": "E-mail é obrigatório"}), 400
+    if not email_atual or not novo_email:
+        return jsonify({"error": "E-mail atual e novo e-mail são obrigatórios"}), 400
 
-    dados["data_atualizacao"] = datetime.utcnow()
-    response, status = atualizar_usuario_por_email(email, dados)
+    # Adiciona a data dentro da função, ou aqui se preferir
+    response, status = validar_e_atualizar_usuario(email_atual, dados)
 
     if status == 200:
+        usuario = response  # usuario retornado já atualizado
+        usuario.email = novo_email
+        usuario.data_atualizacao = datetime.utcnow()
         db.session.commit()
         return jsonify({"message": "Usuário atualizado com sucesso!"}), 200
     else:
         return jsonify(response), status
+
 
 @usuario_bp.route("/usuarios/desativar", methods=["PATCH"])
 def desativar_usuario_por_email():

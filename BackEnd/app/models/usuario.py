@@ -1,6 +1,7 @@
 from config.database import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from .cargos import Cargo
+import re
 
 class Usuario(db.Model):
     __tablename__ = "usuarios"
@@ -23,6 +24,14 @@ class Usuario(db.Model):
 
     def check_senha(self, senha):
         return check_password_hash(self.senha, senha)
+
+    # Regex básica para e-mails
+    EMAIL_REGEX = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+
+    def set_email(self, email):
+        if not re.match(self.EMAIL_REGEX, email):
+            raise ValueError("E-mail inválido. Exemplo válido: usuario@exemplo.com")
+        self.email = email
 
     def __repr__(self):
         return f"<Usuario {self.nome}>"

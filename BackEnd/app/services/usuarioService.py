@@ -1,10 +1,14 @@
+from datetime import datetime
+
+from app.models.cargos import Cargo
 from app.repositories.usuarioRepository import salvar_usuario, listar_usuarios
 from app.models.usuario import Usuario
 from config.database import db
+import re
 
 def criar_usuario(nome, email, senha, cargo):
     usuario = Usuario(nome=nome, email=email, cargo=cargo)
-    usuario.set_senha(senha)  # Chama o método para criptografar a senha
+    usuario.set_senha(senha)
     db.session.add(usuario)
     db.session.commit()
     return usuario
@@ -26,8 +30,10 @@ def atualizar_usuario_por_email(email, dados):
 
     if "nome" in dados:
         usuario.nome = dados["nome"]
-    if "logado" in dados:
-        usuario.logado = dados["logado"]
+
+    # Impede a atualização dos campos 'ativo' e 'logado'
+    if "ativo" in dados or "logado" in dados:
+        return {"error": "Não é permitido alterar os campos 'ativo' e 'logado'"}, 400
 
     # db.session.commit()  # Descomente se estiver usando um ORM
 
@@ -43,3 +49,55 @@ def atualizar_usuario_por_email(email, dados):
     }
 
     return usuario_atualizado, 200
+
+
+def validar_e_atualizar_usuario(email, dados):
+    usuario = buscar_usuario_por_email(email)
+
+    if not usuario:
+        return {"error": "Usuário não encontrado"}, 404
+
+    if usuario.ativo == "Inativo":
+        return {"error": "Não é possível atualizar informações de usuários inativos"}, 400
+
+    campos_validos = ["nome", "email", "senha", "cargo", "novo_email"]
+    for campo in dados:
+        if campo not in campos_validos:
+            return {"error": f"Campo inválido: {campo}"}, 400
+
+    for campo, valor in dados.items():
+        if campo == "email" or campo == "novo_email":
+            if not re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", valor):
+                return {"error": f"E-mail inválido: {valor}"}, 400
+
+        if campo == "senha":
+            if len(valor) < 6:
+                return {"error": "A senha deve ter no mínimo 6 caracteres"}, 400
+            usuario.set_senha(valor)
+            continue
+
+        setattr(usuario, campo, valor)
+
+    usuario.data_atualizacao = datetime.utcnow()
+    return usuario, 200
+
+def validar_email(email):
+    # Regex básica para validar email com @ e domínio
+    padrao = r"^[\w\.-]+@[\w\.-]+\.\w+$"
+    return re.match(padrao, email) is not None
+
+def validar_senha(senha):
+    # Verifica se a senha tem pelo menos 6 caracteres
+    return len(senha) >= 6
+
+def validar_cargo(cargo):
+    try:
+        Cargo[cargo]
+        return True
+    except KeyError:
+        return False
+
+def validar_nome(nome):
+    padrao = r"^[a-zA-ZÀ-ÿ\s]+$"
+    return re.match(padrao, nome) is not None and len(nome) >= 3
+
