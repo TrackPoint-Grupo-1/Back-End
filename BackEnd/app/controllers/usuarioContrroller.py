@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request
 
 from app.services.usuarioService import criar_usuario, buscar_usuarios, buscar_usuario_por_email, \
-    atualizar_usuario_por_email, validar_e_atualizar_usuario, validar_email, validar_senha, validar_cargo, validar_nome
+    atualizar_usuario_por_email, validar_e_atualizar_usuario, validar_email, validar_senha, validar_cargo, validar_nome, \
+    autenticar_usuario
 from flask import Blueprint, jsonify, request
 
 from app.services.usuarioService import criar_usuario, buscar_usuarios, buscar_usuario_por_email, \
@@ -140,28 +141,17 @@ from datetime import datetime
 from config.database import db
 
 
-@usuario_bp.route("/usuarios/login", methods=["POST"])
+@usuario_bp.route("/usuarios/login", methods=["PATCH"])
 def login():
     dados = request.json
     email = dados.get("email")
     senha = dados.get("senha")
 
-    usuario = buscar_usuario_por_email(email)
-    if not usuario or not usuario.check_senha(senha):
-        return jsonify({"error": "E-mail ou senha inválidos"}), 401
-
-    usuario.logado = True
-    usuario.data_ultimo_login = datetime.utcnow()
-
-    try:
-        db.session.commit()  # Salva as alterações no banco
-        return jsonify({"message": "Login realizado com sucesso!"}), 200
-    except Exception as e:
-        db.session.rollback()  # Desfaz em caso de erro
-        return jsonify({"error": str(e)}), 500
+    resposta, status = autenticar_usuario(email, senha)
+    return jsonify(resposta), status
 
 
-@usuario_bp.route("/usuarios/logout", methods=["POST"])
+@usuario_bp.route("/usuarios/logout", methods=["PATCH"])
 def logout():
     dados = request.json
     email = dados.get("email")

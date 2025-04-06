@@ -21,6 +21,7 @@ REQUIRED_PACKAGES = [
     "typing_extensions==4.13.1",
     "Werkzeug==3.1.3",
     "flask-swagger-ui",
+    "flask",
     "re"
 ]
 

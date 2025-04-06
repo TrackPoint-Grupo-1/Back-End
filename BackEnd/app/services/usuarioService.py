@@ -101,3 +101,22 @@ def validar_nome(nome):
     padrao = r"^[a-zA-ZÀ-ÿ\s]+$"
     return re.match(padrao, nome) is not None and len(nome) >= 3
 
+def autenticar_usuario(email, senha):
+    usuario = Usuario.query.filter_by(email=email).first()
+
+    if not usuario or not usuario.check_senha(senha):
+        return {"error": "E-mail ou senha inválidos"}, 401
+
+    if usuario.ativo != "Ativo":
+        return {"error": "Usuário inativo. Acesso negado."}, 403
+
+    usuario.logado = True
+    usuario.data_ultimo_login = datetime.utcnow()
+
+    try:
+        db.session.commit()
+        return {"message": "Login realizado com sucesso!"}, 200
+    except Exception as e:
+        db.session.rollback()
+        return {"error": str(e)}, 500
+
