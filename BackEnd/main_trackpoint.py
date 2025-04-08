@@ -1,7 +1,7 @@
 import os
-
 from flask import Flask, send_from_directory
 from flask_swagger_ui import get_swaggerui_blueprint
+from app.controllers.atestadoController import atestado_bp
 from app.controllers.usuarioContrroller import usuario_bp
 from app.dependencies import install_missing_packages
 from config.database import init_db
@@ -30,6 +30,7 @@ init_db(app)
 
 # Registrar os controllers
 app.register_blueprint(usuario_bp)
+app.register_blueprint(atestado_bp)
 
 if __name__ == "__main__":
     app.run(debug=True)
