@@ -29,11 +29,14 @@ def install_missing_packages():
     """Verifica e instala pacotes necessários automaticamente."""
     for package in REQUIRED_PACKAGES:
         try:
-            package_name = package.split("==")[0]  # Pega apenas o nome do pacote
+            package_name = package.split("==")[0] if "==" in package else package
+            if package_name == "re":
+                continue  # 're' é do Python, não precisa instalar
             __import__(package_name)
         except ImportError:
             print(f"📦 Instalando {package}...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
-# Instala os pacotes ao importar o script
-install_missing_packages()
+# Instala os pacotes ao rodar o script
+if __name__ == "__main__":
+    install_missing_packages()

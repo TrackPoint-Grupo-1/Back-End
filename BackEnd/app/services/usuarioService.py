@@ -115,7 +115,11 @@ def autenticar_usuario(email, senha):
 
     try:
         db.session.commit()
-        return {"message": "Login realizado com sucesso!"}, 200
+        return {
+            "message": "Login realizado com sucesso!",
+            "email": usuario.email,
+            "cargo": usuario.cargo.value
+        }, 200
     except Exception as e:
         db.session.rollback()
         return {"error": str(e)}, 500

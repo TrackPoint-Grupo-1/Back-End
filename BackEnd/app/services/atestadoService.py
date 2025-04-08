@@ -6,6 +6,10 @@ from app.repositories.atestadoRepository import buscar_atestados_por_usuario
 from config.database import db
 
 
+from flask import jsonify
+from app.utils.email_utils import enviar_email  # Certifique-se de importar corretamente
+from config.config_email import config_email
+
 def criar_atestado_service(dados):
     email = dados.get("email")
     if not email:
@@ -30,7 +34,29 @@ def criar_atestado_service(dados):
     db.session.add(novo_atestado)
     db.session.commit()
 
+    # Enviar email após o commit
+    try:
+        assunto = "📄 Atestado enviado com sucesso"
+        corpo = f"""
+Olá, {usuario.nome},
+
+Seu atestado foi recebido com sucesso no sistema e está aguardando análise.
+
+📅 Data de envio: {novo_atestado.data_envio.strftime('%d/%m/%Y %H:%M')}
+📌 Status: Pendente
+
+Você será notificado assim que for analisado.
+
+Atenciosamente,
+Equipe RH
+        """
+        enviar_email(destinatario=email, assunto=assunto, corpo=corpo)
+
+    except Exception as e:
+        print(f"[Erro ao enviar e-mail] {e}")
+
     return jsonify({"message": "Atestado enviado com sucesso!"}), 201
+
 
 def listar_todos_atestados():
     atestados = Atestado.query.all()

@@ -1,15 +1,19 @@
 import os
 from flask import Flask, send_from_directory
 from flask_swagger_ui import get_swaggerui_blueprint
+import secrets
+import config
 from app.controllers.atestadoController import atestado_bp
 from app.controllers.usuarioContrroller import usuario_bp
 from app.dependencies import install_missing_packages
 from config.database import init_db
 
+print("secrets.token_hex(32)" + secrets.token_hex(32))
 # Instala pacotes necessários
 install_missing_packages()
-
 app = Flask(__name__)
+#app.config.from_object(config.config_email)
+app.config['JSON_AS_ASCII'] = False
 SWAGGER_URL = "/docs"
 API_URL = "/swagger.yaml"
 
