@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, request, jsonify
 
 from app.models.atestado import Atestado
@@ -5,11 +7,24 @@ from app.services.atestadoService import criar_atestado_service, listar_todos_at
 from app.utils.email_utils import enviar_email
 from config.database import db
 
+from BackEnd.app.utils.PipefyConnector import criar_card_pipefy
+
 atestado_bp = Blueprint("atestado_bp", __name__)
+
 
 @atestado_bp.route("/atestados/criar", methods=["POST"])
 def criar_atestado_controller():
     dados = request.json
+
+    email = dados.get("email") or "sememail@exemplo.com"
+    descricao = dados.get("texto_capturado") or "Sem descrição"
+
+    try:
+        card = criar_card_pipefy(email, descricao)
+        print(f"✅ Card criado no Pipefy: ID {card['id']}, Título {card['title']}")
+    except Exception as e:
+        print(str(e))
+
     return criar_atestado_service(dados)
 
 
