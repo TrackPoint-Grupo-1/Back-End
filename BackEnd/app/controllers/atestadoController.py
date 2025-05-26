@@ -7,7 +7,8 @@ from app.services.atestadoService import criar_atestado_service, listar_todos_at
 from app.utils.email_utils import enviar_email
 from config.database import db
 
-from BackEnd.app.utils.PipefyConnector import criar_card_pipefy
+from BackEnd.app.utils.PipefyConnector import criar_card_pipefy, mover_card_para_aprovado, buscar_card_por_id_atestado, \
+    mover_card_para_reprovado
 
 atestado_bp = Blueprint("atestado_bp", __name__)
 
@@ -16,16 +17,24 @@ atestado_bp = Blueprint("atestado_bp", __name__)
 def criar_atestado_controller():
     dados = request.json
 
-    email = dados.get("email") or "sememail@exemplo.com"
-    descricao = dados.get("texto_capturado") or "Sem descrição"
+    nome = f"Novo Atestado - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    email = dados.get("email_usuario") or dados.get("email")
+    descricao = dados.get("texto_capturado") or dados.get("descricao")
+
+    # Cria o atestado no sistema
+    response = criar_atestado_service(dados)
+    if response[1] != 201:
+        return response  # Retorna erro se falhar na criação do atestado
+
+    id = response[0].get_json().get("id")
 
     try:
-        card = criar_card_pipefy(email, descricao)
-        print(f"✅ Card criado no Pipefy: ID {card['id']}, Título {card['title']}")
+        card = criar_card_pipefy(nome=nome, email=email, descricao=descricao, id=id)
+        print(f"✅ Card criado no Pipefy: ID {card.get('id')}, Título {nome}")
     except Exception as e:
-        print(str(e))
+        print(f"❌ Erro ao criar card no Pipefy: {e}")
 
-    return criar_atestado_service(dados)
+    return response  # Retorna a resposta da criação do atestado
 
 
 @atestado_bp.route("/atestados", methods=["GET"])
@@ -89,22 +98,24 @@ def aprovar_atestado(id):
     if not request.is_json:
         return jsonify({"error": "Requisição precisa estar em JSON."}), 400
 
-    usuario_logado_email = request.json.get("email_usuario_logado")
-    if not usuario_logado_email:
-        return jsonify({"error": "Email do usuário logado é obrigatório."}), 400
-
-    if atestado.usuario.email == usuario_logado_email:
-        return jsonify({"error": "Você não pode rejeitar seu próprio atestado."}), 403
-
+    # Atualiza o status no banco
     atestado.status = "Aprovado"
     db.session.commit()
 
-    # Enviar e-mail
+    # Envia email de confirmação
     assunto = "📄 Atestado Aprovado"
     mensagem = f"Olá, {atestado.usuario.nome},\n\nSeu atestado foi aprovado com sucesso! ✅"
     enviar_email(atestado.usuario.email, assunto, mensagem)
 
+    # ✅ Mover no Pipefy - corrige aqui
+    card = buscar_card_por_id_atestado(atestado.id)
+    if card:
+        mover_card_para_aprovado(card["id"])
+    else:
+        print(f"Card Pipefy para atestado {atestado.id} não encontrado.")
+
     return jsonify({"message": "Atestado aprovado com sucesso."}), 200
+
 
 
 @atestado_bp.route('/atestados/<int:id>/rejeitar', methods=['PATCH'])
@@ -114,19 +125,20 @@ def rejeitar_atestado(id):
     if not request.is_json:
         return jsonify({"error": "Requisição precisa estar em JSON."}), 400
 
-    usuario_logado_email = request.json.get("email_usuario_logado")
-    if not usuario_logado_email:
-        return jsonify({"error": "Email do usuário logado é obrigatório."}), 400
-
-    if atestado.usuario.email == usuario_logado_email:
-        return jsonify({"error": "Você não pode rejeitar seu próprio atestado."}), 403
-
+    # Atualiza o status no banco
     atestado.status = "Rejeitado"
     db.session.commit()
 
-    # Enviar e-mail
+    # Envia email de confirmação
     assunto = "📄 Atestado Rejeitado"
     mensagem = f"Olá, {atestado.usuario.nome},\n\nSeu atestado foi rejeitado. ❌\nSe houver dúvidas, entre em contato com o RH."
     enviar_email(atestado.usuario.email, assunto, mensagem)
+
+    # ❌ Mover no Pipefy - corrige aqui
+    card = buscar_card_por_id_atestado(atestado.id)
+    if card:
+        mover_card_para_reprovado(card["id"])
+    else:
+        print(f"Card Pipefy para atestado {atestado.id} não encontrado.")
 
     return jsonify({"message": "Atestado rejeitado com sucesso."}), 200

@@ -55,7 +55,7 @@ Equipe RH
     except Exception as e:
         print(f"[Erro ao enviar e-mail] {e}")
 
-    return jsonify({"message": "Atestado enviado com sucesso!"}), 201
+    return jsonify({"message": "Atestado enviado com sucesso!", "id": novo_atestado.id}), 201
 
 
 def listar_todos_atestados():
